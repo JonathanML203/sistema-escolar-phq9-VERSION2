@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHQ-9 | Resultado Predicción</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght=400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-slate-100 text-center max-w-md w-full space-y-6">
+        
+        <h3 class="text-xl font-bold text-slate-800">
+            Resultado de la Predicción: 
+            <span class="text-indigo-600 font-extrabold block text-2xl mt-1"><%= prediccion %></span>
+        </h3>
+        
+        <hr class="border-slate-100">
+        
+        <% if (prediccion >= 2) { %>
+            <div class="bg-amber-50 text-amber-900 border border-amber-200 rounded-xl p-4 text-left space-y-1">
+                <h5 class="font-bold flex items-center gap-1.5 text-sm text-amber-800">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Recomendación Activa
+                </h5>
+                <p class="text-xs leading-relaxed text-amber-700">
+                    Se recomienda realizar la prueba clínica completa del test PHQ-9.
+                </p>
+            </div>
+            
+            <div class="pt-2">
+                <a href="/alumno/test_completo" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold p-3 rounded-xl shadow transition-colors block text-xs tracking-wider uppercase no-underline">
+                    PROSEGUIR AL TEST PHQ-9
+                </a>
+            </div>
+        <% } else { %>
+            <div class="bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-xl p-4 text-left space-y-1">
+                <h5 class="font-bold flex items-center gap-1.5 text-sm text-emerald-800">
+                    <i class="bi bi-check-circle-fill"></i> Estado Estable
+                </h5>
+                <p class="text-xs leading-relaxed text-emerald-700">
+                    No es necesario realizar el cuestionario extendido PHQ-9 por el momento.
+                </p>
+            </div>
+            
+            <div class="pt-2">
+                <a href="/alumno/dashboard" class="inline-block border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-bold px-4 py-2.5 rounded-lg transition-colors no-underline">
+                    Volver al Panel Principal
+                </a>
+            </div>
+        <% } %>
+        
+    </div>
+
+</body>
+</html>
