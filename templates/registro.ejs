@@ -140,9 +140,12 @@
                         <select name="rol" id="selectRol" onchange="evaluarRolDocente(this.value)" class="w-full p-2.5 rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm text-slate-800">
                             <option value="alumno">Soy Alumno</option>
                             <option value="maestro">Soy Maestro / Administrador</option>
+                            <!-- 🌟 SE AÑADIÓ: Opción para el registro del nuevo perfil clínico -->
+                            <option value="psicologo">Soy Psicólogo / Orientador</option>
                         </select>
                     </div>
 
+                    <!-- El bloque de la clave se mantiene intacto para que no altere tu lógica actual -->
                     <div id="boxClaveMaestro" class="hidden flex flex-col gap-1.5 animate-fadeIn">
                         <label class="text-sm font-bold text-amber-700 flex items-center gap-1">
                             <i class="bi bi-key-fill"></i> Clave de Validación Docente*
