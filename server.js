@@ -139,11 +139,12 @@ app.post('/registro', async (req, res) => {
     const f = req.body;
     const { username, password, nombre, rol, carrera, genero, semestre, colonia, estatus } = f;
 
-    // 🛡️ BARRERA DE CONTROL: VALIDACIÓN DE PRIVILEGIOS DOCENTES
-    if (rol === 'maestro') {
+    // 🛡️ BARRERA DE CONTROL: VALIDACIÓN DE PRIVILEGIOS DOCENTES Y CLÍNICOS
+    // 🌟 SE MODIFICÓ: Ahora también le exige la clave secreta al rol de psicólogo
+    if (rol === 'maestro' || rol === 'psicologo') {
         const clave_ingresada = f.clave_maestro;
         if (clave_ingresada !== "DOCENTE123") {
-            return res.redirect('/registro?error=La clave de validación docente es incorrecta.');
+            return res.redirect('/registro?error=La clave de validación institucional es incorrecta.');
         }
     }
 
@@ -157,11 +158,13 @@ app.post('/registro', async (req, res) => {
             // Encriptación asíncrona irreversible con un factor de salteado de 10 rondas
             const passwordHash = await bcrypt.hash(password, 10);
 
-            // Formatear campos condicionales en caso de tratarse de un registro docente
-            let dia_n = rol === 'maestro' ? 0 : parseInt(f.dia_nacimiento);
-            let mes_n = rol === 'maestro' ? 'N/A' : f.mes_nacimiento;
-            let anio_n = rol === 'maestro' ? 0 : parseInt(f.anio_nacimiento);
-            let semestre_ajustado = rol === 'maestro' ? 'N/A' : semestre;
+            // Formatear campos condicionales en caso de tratarse de un registro docente o clínico
+            // 🌟 SE MODIFICÓ: Maestro y Psicólogo guardan 0 y N/A de forma limpia y estandarizada
+            const esPersonal = (rol === 'maestro' || rol === 'psicologo');
+            let dia_n = esPersonal ? 0 : parseInt(f.dia_nacimiento);
+            let mes_n = esPersonal ? 'N/A' : f.mes_nacimiento;
+            let anio_n = esPersonal ? 0 : parseInt(f.anio_nacimiento);
+            let semestre_ajustado = esPersonal ? 'N/A' : semestre;
 
             const sql = `INSERT INTO usuarios 
                 (username, password, nombre, rol, carrera, genero, semestre, dia_nacimiento, mes_nacimiento, anio_nacimiento, colonia, estatus_socioeconomico) 
