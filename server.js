@@ -80,40 +80,42 @@ app.post('/login', (req, res) => {
             return res.redirect('/?error=Credenciales incorrectas o usuario inexistente.');
         }
 
-        // Bloqueo preventivo si la matrícula del alumno fue dada de baja
+        // Bloqueo preventivo si la matrícula del alumno fue dada de baja (Se mantiene intacto)
         if (user.activo === 0) {
             return res.redirect('/?error=Tu cuenta ha sido dada de baja del sistema. Contacta a orientación.');
         }
 
-        // Validación estricta de coherencia de roles
+        // Validación estricta de coherencia de roles (Se mantiene intacto)
         if (user.rol !== rol) {
             return res.redirect('/?error=El rol seleccionado no corresponde a tu usuario.');
         }
 
         try {
-            // Comparación segura del Hash criptográfico de la contraseña
+            // Comparación segura del Hash criptográfico de la contraseña (Se mantiene intacto)
             const match = await bcrypt.compare(password, user.password);
             if (!match) {
                 return res.redirect('/?error=Credenciales incorrectas.');
             }
 
-            // Firma digital del Token de Identidad con expiración de 2 horas
+            // Firma digital del Token de Identidad con expiración de 2 horas (Se mantiene intacto)
             const token = jwt.sign(
                 { id: user.id, username: user.username, rol: user.rol, nombre: user.nombre },
                 JWT_SECRET,
                 { expiresIn: '2h' }
             );
 
-            // Resguardo del Token en una Cookie HTTP-Only inmune a scripts maliciosos (XSS)
+            // Resguardo del Token en una Cookie HTTP-Only inmune a scripts maliciosos (XSS) (Se mantiene intacto)
             res.cookie('token', token, {
                 httpOnly: true,
                 secure: false, // Cambiar a true cuando utilices producción bajo entornos HTTPS
                 sameSite: 'Lax'
             });
 
-            // Redirección en cascada según privilegios del usuario
+            // 🌟 SE MODIFICÓ: Redirección en cascada soportando los 3 roles del sistema
             if (user.rol === 'maestro') {
                 return res.redirect('/maestro/dashboard');
+            } else if (user.rol === 'psicologo') {
+                return res.redirect('/psicologo/dashboard');
             } else {
                 return res.redirect('/alumno/dashboard');
             }
@@ -297,10 +299,13 @@ app.get('/maestro/dashboard', verificarSesion, (req, res) => {
     const c_filtro = (req.query.carrera || '').trim();
     const s_filtro = (req.query.semestre || '').trim();
 
+    // 🌟 SE MODIFICÓ: Se añade LEFT JOIN para traer el "estado" clínico del alumno sin exponer sus notas secretas
     let queryResultados = `
-        SELECT r.id, u.username, u.nombre, u.carrera, u.semestre, u.dia_nacimiento, u.mes_nacimiento, u.anio_nacimiento, u.colonia, u.estatus_socioeconomico, r.puntaje, r.nivel, datetime(r.fecha, 'localtime') AS fecha
+        SELECT r.id, u.username, u.nombre, u.carrera, u.semestre, u.dia_nacimiento, u.mes_nacimiento, u.anio_nacimiento, u.colonia, u.estatus_socioeconomico, r.puntaje, r.nivel, datetime(r.fecha, 'localtime') AS fecha,
+               COALESCE(sc.estado, 'Pendiente de Cita') AS estado
         FROM resultados r
         JOIN usuarios u ON r.usuario_id = u.id
+        LEFT JOIN seguimiento_clinico sc ON u.id = sc.usuario_id
         WHERE 1=1
     `;
     let params = [];
@@ -311,11 +316,19 @@ app.get('/maestro/dashboard', verificarSesion, (req, res) => {
 
     queryResultados += " ORDER BY r.fecha DESC";
 
-    // Consulta en cascada para alimentar las listas de control del maestro de forma síncrona
     db.all(queryResultados, params, (err, resultados) => {
         if (err) return res.send("<h1>Error al indexar el historial clínico de alumnos.</h1>");
 
-        db.all("SELECT * FROM usuarios WHERE rol = 'alumno' ORDER BY username ASC", [], (err, alumnos) => {
+        // 🌟 SE MODIFICÓ: También vinculamos el estado en el listado general de alumnos para el modo lectura del maestro
+        const queryAlumnosMaestro = `
+            SELECT u.*, COALESCE(sc.estado, 'Pendiente de Cita') AS estado 
+            FROM usuarios u 
+            LEFT JOIN seguimiento_clinico sc ON u.id = sc.usuario_id 
+            WHERE u.rol = 'alumno' 
+            ORDER BY u.username ASC
+        `;
+
+        db.all(queryAlumnosMaestro, [], (err, alumnos) => {
             if (err) return res.send("<h1>Error al indexar el listado de alumnos matriculados.</h1>");
 
             res.render('dashboard_maestro', {
@@ -329,7 +342,7 @@ app.get('/maestro/dashboard', verificarSesion, (req, res) => {
     });
 });
 
-// Actualización manual e individual de semestres por alumno
+// Actualización manual e individual de semestres por alumno (Se mantiene intacto)
 app.post('/maestro/cambiar_semestre/:usuario_id', verificarSesion, (req, res) => {
     if (req.user.rol !== 'maestro') return res.redirect('/?error=Acceso denegado.');
 
@@ -339,6 +352,59 @@ app.post('/maestro/cambiar_semestre/:usuario_id', verificarSesion, (req, res) =>
     db.run('UPDATE usuarios SET semestre = ? WHERE id = ?', [semestre, usuario_id], (err) => {
         if (err) return res.send("<h1>Error al modificar la asignación del semestre.</h1>");
         res.redirect('/maestro/dashboard?success=Semestre modificado con éxito.');
+    });
+});
+
+// ==========================================
+// 🧠 NUEVAS RUTAS EXCLUSIVAS DEL PSICÓLOGO
+// ==========================================
+
+// RUTA A: Panel clínico con priorización de riesgo (Semáforo de alertas y visor de Pregunta 9)
+app.get('/psicologo/dashboard', verificarSesion, (req, res) => {
+    if (req.user.rol !== 'psicologo') return res.redirect('/?error=Acceso denegado.');
+
+    // Esta consulta usa subconsultas correlacionadas para traer siempre el último test de rutina y resultado sin duplicar filas
+    const queryPsicologo = `
+        SELECT u.id, u.username, u.nombre, u.carrera, u.semestre,
+               COALESCE(sc.estado, 'Pendiente de Cita') AS estado,
+               COALESCE(sc.notas_clinicas, '') AS notas_clinicas,
+               COALESCE((SELECT q9 FROM respuestas_rutina WHERE usuario_id = u.id ORDER BY fecha DESC LIMIT 1), 0) AS q9,
+               COALESCE((SELECT puntaje FROM resultados WHERE usuario_id = u.id ORDER BY fecha DESC LIMIT 1), 0) AS puntaje,
+               COALESCE((SELECT nivel FROM resultados WHERE usuario_id = u.id ORDER BY fecha DESC LIMIT 1), 'Sin evaluar') AS nivel
+        FROM usuarios u
+        LEFT JOIN seguimiento_clinico sc ON u.id = sc.usuario_id
+        WHERE u.rol = 'alumno'
+        ORDER BY q9 DESC, puntaje DESC, u.username ASC
+    `;
+
+    db.all(queryPsicologo, [], (err, alumnos) => {
+        if (err) return res.send("<h1>Error al indexar el panel de control clínico para psicología.</h1>");
+        res.render('dashboard_psicologo', { alumnos });
+    });
+});
+
+// RUTA B: Procesamiento AJAX (Guardado o actualización automática del estatus y notas privadas)
+app.post('/psicologo/actualizar_estatus', verificarSesion, (req, res) => {
+    if (req.user.rol !== 'psicologo') return res.status(403).json({ success: false, error: 'No autorizado' });
+
+    const { usuario_id, estado, notas_clinicas } = req.body;
+    
+    // Evaluamos si el riesgo requiere marcar una alerta crítica interna en base a la respuesta del cliente
+    const alertaCritica = (estado === 'En Canalización / Proceso') ? 1 : 0;
+
+    const sqlUpsert = `
+        INSERT INTO seguimiento_clinico (usuario_id, estado, notas_clinicas, alerta_critica, fecha_actualizacion)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(usuario_id) DO UPDATE SET
+            estado = excluded.estado,
+            notas_clinicas = excluded.notas_clinicas,
+            alerta_critica = excluded.alerta_critica,
+            fecha_actualizacion = CURRENT_TIMESTAMP
+    `;
+
+    db.run(sqlUpsert, [usuario_id, estado, notas_clinicas, alertaCritica], function(err) {
+        if (err) return res.status(500).json({ success: false, error: 'Error en la base de datos local.' });
+        res.json({ success: true });
     });
 });
 

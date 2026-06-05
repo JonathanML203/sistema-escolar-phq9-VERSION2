@@ -24,6 +24,17 @@ CREATE TABLE IF NOT EXISTS respuestas_rutina (
     FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
 );
 
+-- 🧠 Tabla para el control clínico del Psicólogo (4 funciones integradas)
+CREATE TABLE IF NOT EXISTS seguimiento_clinico (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER UNIQUE,
+    estado TEXT DEFAULT 'Pendiente de Cita',
+    notas_clinicas TEXT DEFAULT '',
+    alerta_critica INTEGER DEFAULT 0, -- 1 si la pregunta 9 es alta
+    fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+);
+
 CREATE TABLE IF NOT EXISTS resultados (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER,

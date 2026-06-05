@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHQ-9 | Panel Docente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght=400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+    <nav class="w-full bg-slate-900 text-white py-4 px-6 shadow-md flex justify-between items-center">
+        <span class="text-lg font-bold tracking-wide flex items-center gap-2">
+            <i class="bi bi-shield-check text-indigo-400"></i> Panel de Control Administrativo (Docentes)
+        </span>
+        <a href="/logout" class="border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 no-underline">
+            <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+        </a>
+    </nav>
+
+    <div class="flex-1 container mx-auto px-4 py-6 max-w-7xl">
+        
+        <div id="alertContainer" class="hidden"></div>
+
+        <div class="flex border-b border-slate-200 mb-6 gap-2">
+            <button id="btnTabResultados" onclick="switchTab('resultados')" class="py-2.5 px-4 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition-all flex items-center gap-2 outline-none">
+                <i class="bi bi-clipboard-data-fill"></i> Historial de Resultados
+            </button>
+            <button id="btnTabAlumnos" onclick="switchTab('alumnos')" class="py-2.5 px-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-2 outline-none">
+                <i class="bi bi-people-fill"></i> Control de Alumnos (Semestres/Bajas)
+            </button>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-6">
+            
+            <div id="tabResultados" class="space-y-6 block">
+                
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <form action="/maestro/dashboard" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Matrícula / N. Control</label>
+                            <input type="text" name="matricula" class="w-full p-2 text-sm rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Buscar matrícula..." value="<%= m_old %>">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Por Carrera</label>
+                            <select name="carrera" class="w-full p-2 text-sm rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-800">
+                                <option value="">Todas las carreras</option>
+                                <option value="Sistemas Computacionales" <%= c_old === 'Sistemas Computacionales' ? 'selected' : '' %>>Sistemas Computacionales</option>
+                                <option value="Electronica" <%= c_old === 'Electronica' ? 'selected' : '' %>>Electrónica</option>
+                                <option value="Mecanica" <%= c_old === 'Mecanica' ? 'selected' : '' %>>Mecánica</option>
+                                <option value="Industrial" <%= c_old === 'Industrial' ? 'selected' : '' %>>Industrial</option>
+                                <option value="Gestion Empresarial" <%= c_old === 'Gestion Empresarial' ? 'selected' : '' %>>Gestión Empresarial</option>
+                                <option value="Contador Publico" <%= c_old === 'Contador Publico' ? 'selected' : '' %>>Contador Público</option>
+                                <option value="Logistica" <%= c_old === 'Logistica' ? 'selected' : '' %>>Logística</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Por Semestre</label>
+                            <select name="semestre" class="w-full p-2 text-sm rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-800">
+                                <option value="">Todos los semestres</option>
+                                <% const listaSemestres = ["PRIMERO", "SEGUNDO", "TERCERO", "CUARTO", "QUINTO", "SEXTO", "SEPTIMO", "OCTAVO", "NOVENO", "DECIMO", "ONCEAVO", "DOCEAVO"]; %>
+                                <% listaSemestres.forEach(sem => { %>
+                                    <option value="<%= sem %>" <%= s_old === sem ? 'selected' : '' %>><%= sem %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-2 text-sm rounded-lg shadow transition-colors uppercase tracking-wider">Filtrar</button>
+                            <a href="/maestro/dashboard" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold p-2 text-sm rounded-lg text-center transition-colors uppercase tracking-wider no-underline">Limpiar</a>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                    <h4 class="text-lg font-bold text-slate-700">Resultados Clínicos Obtenidos</h4>
+                    <a href="/maestro/exportar_pdf?matricula=<%= m_old %>&carrera=<%= c_old %>&semestre=<%= s_old %>" class="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 text-xs rounded-xl shadow-md hover:shadow-lg transition-all tracking-wide uppercase no-underline">
+                        <i class="bi bi-file-earmark-pdf-fill text-sm"></i> Exportar Reporte Filtrado a PDF
+                    </a>
+                </div>
+
+                <div class="w-full overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                    <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+                        <thead class="bg-slate-800 text-slate-200 uppercase font-semibold tracking-wider">
+                            <tr>
+                                <th class="p-3">Matrícula</th>
+                                <th class="p-3">Nombre del Alumno</th>
+                                <th class="p-3">Datos Demográficos (Nac. / Residencia / NSE)</th>
+                                <th class="p-3">Carrera</th>
+                                <th class="p-3">Semestre</th>
+                                <th class="p-3">Puntaje</th>
+                                <th class="p-3">Diagnóstico Clínico</th>
+                                <th class="p-3">Estatus Clínico</th>
+                                <th class="p-3">Fecha Aplicación</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 bg-white text-slate-700 font-medium">
+                            <% if (resultados && resultados.length > 0) { %>
+                                <% resultados.forEach(res => { %>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="p-3"><span class="bg-slate-100 border border-slate-300 text-slate-800 font-bold px-2 py-0.5 rounded text-[11px] uppercase"><%= res.username %></span></td>
+                                    <td class="p-3 text-slate-900 font-bold text-sm"><%= res.nombre %></td>
+                                    <td class="p-3 leading-relaxed text-slate-500">
+                                        📅 F. Nac: <%= res.dia_nacimiento %>/<%= res.mes_nacimiento %>/<%= res.anio_nacimiento %><br>
+                                        📍 Col. <%= res.colonia %><br>
+                                        💰 Estatus: <b class="text-slate-700"><%= res.estatus_socioeconomico %></b>
+                                    </td>
+                                    <td class="p-3 text-slate-500"><%= res.carrera %></td>
+                                    <td class="p-3"><%= res.semestre %></td>
+                                    <td class="p-3"><strong class="text-indigo-600 text-sm font-bold"><%= res.puntaje %> pts</strong></td>
+                                    <td class="p-3">
+                                        <% if (res.nivel.includes('Grave') || res.nivel.includes('Moderada')) { %>
+                                            <span class="inline-block px-2.5 py-1 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-200"><%= res.nivel %></span>
+                                        <% } else { %>
+                                            <span class="inline-block px-2.5 py-1 text-[11px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200"><%= res.nivel %></span>
+                                        <% } %>
+                                    </td>
+                                    <td class="p-3 whitespace-nowrap">
+                                        <% if (res.estado === 'En Canalización / Proceso') { %>
+                                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-200">🔵 En Proceso</span>
+                                        <%   } else if (res.estado === 'Caso Cerrado / Atendido') { %>
+                                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">🟢 Atendido</span>
+                                        <%   } else { %>
+                                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-200">🟡 Pendiente</span>
+                                        <%   } %>
+                                    </td>
+                                    <td class="p-3 text-slate-400"><%= String(res.fecha).substring(0, 16) %></td>
+                                </tr>
+                                <% }); %>
+                            <% ] else { %>
+                                <tr>
+                                    <td colspan="9" class="text-center text-slate-400 py-8 font-medium text-sm">Ningún registro coincide con la búsqueda.</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tabAlumnos" class="space-y-4 hidden">
+                <h4 class="text-lg font-bold text-slate-700">Administración de Matrícula Escolar</h4>
+                
+                <form action="/maestro/promover_bulk" method="POST" class="space-y-4">
+                    <div>
+                        <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2 text-xs rounded-xl shadow transition-all tracking-wider uppercase flex items-center gap-1">
+                            <i class="bi bi-rocket-takeoff-fill text-sm"></i> Promover Alumnos Seleccionados (+1 Semestre)
+                        </button>
+                    </div>
+
+                    <div class="w-full overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                        <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-600 uppercase font-bold border-b border-slate-200">
+                                <tr>
+                                    <th width="50" class="p-3 text-center">
+                                        <input type="checkbox" id="checkAll" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer" onclick="toggleTodos(this)">
+                                    </th>
+                                    <th class="p-3">Matrícula</th>
+                                    <th class="p-3">Nombre</th>
+                                    <th class="p-3">Carrera</th>
+                                    <th class="p-3">Semestre Actual</th>
+                                    <th class="p-3">Atención Psicológica</th>
+                                    <th class="p-3">Estado Cuenta</th>
+                                    <th class="p-3 text-center">Acciones Individuales</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200 bg-white text-slate-700 font-medium">
+                                <% if (alumnos && alumnos.length > 0) { %>
+                                    <% alumnos.forEach(alu => { %>
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="p-3 text-center">
+                                            <input type="checkbox" name="alumno_ids" value="<%= alu.id %>" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 check-alumno accent-indigo-600 cursor-pointer">
+                                        </td>
+                                        <td class="p-3 font-bold text-slate-900"><%= alu.username %></td>
+                                        <td class="p-3 text-sm"><%= alu.nombre %></td>
+                                        <td class="p-3 text-slate-500"><%= alu.carrera %></td>
+                                        <td class="p-3">
+                                            <select onchange="actualizarSemestreIndividual('<%= alu.id %>', this.value)" class="p-1.5 text-xs rounded-lg border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-semibold max-w-[140px] w-full cursor-pointer">
+                                                <% const listadoFiltroSemestre = ["PRIMERO", "SEGUNDO", "TERCERO", "CUARTO", "QUINTO", "SEXTO", "SEPTIMO", "OCTAVO", "NOVENO", "DECIMO", "ONCEAVO", "DOCEAVO", "EGRESADO"]; %>
+                                                <% listadoFiltroSemestre.forEach(sem => { %>
+                                                    <option value="<%= sem %>" <%= alu.semestre === sem ? 'selected' : '' %>><%= sem %></option>
+                                                <% }); %>
+                                            </select>
+                                        </td>
+                                        <td class="p-3 whitespace-nowrap">
+                                            <% if (alu.estado === 'En Canalización / Proceso') { %>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">🔵 En Proceso</span>
+                                            <% } else if (alu.estado === 'Caso Cerrado / Atendido') { %>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">🟢 Atendido</span>
+                                            <% } else { %>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">🟡 Pendiente</span>
+                                            <% } %>
+                                        </td>
+                                        <td class="p-3">
+                                            <% if (alu.activo === 1) { %>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Activo</span>
+                                            <% } else { %>
+                                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-300">Inactivo</span>
+                                            <% } %>
+                                        </td>
+                                        <td class="p-3 text-center">
+                                            <% if (alu.activo === 1) { %>
+                                                <a href="/maestro/toggle_status/<%= alu.id %>" class="inline-block w-28 bg-transparent hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-bold py-1.5 px-2 rounded-lg border border-rose-200 text-[11px] text-center uppercase tracking-wider no-underline transition-colors">Dar de Baja</a>
+                                            <% } else { %>
+                                                <a href="/maestro/toggle_status/<%= alu.id %>" class="inline-block w-28 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-2 rounded-lg text-[11px] text-center uppercase tracking-wider no-underline transition-all shadow-sm">Reactivar</a>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                    <% }); %>
+                                <% } else { %>
+                                    <tr><td colspan="8" class="text-center text-slate-400 py-6">No hay alumnos registrados en el sistema.</td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+
+                <form id="formIndividual" action="" method="POST" style="display: none;">
+                    <input type="hidden" name="semestre" id="inputSemestreIndividual">
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="w-full bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 font-medium mt-10">
+        Área de Orientación Educativa &copy; 2026
+    </footer>
+
+    <script>
+    // 1. Alternador Dinámico de Pestañas (Tabs de Tailwind)
+    function switchTab(target) {
+        const tabRes = document.getElementById('tabResultados');
+        const tabAlu = document.getElementById('tabAlumnos');
+        const btnRes = document.getElementById('btnTabResultados');
+        const btnAlu = document.getElementById('btnTabAlumnos');
+
+        if (target === 'resultados') {
+            tabRes.classList.remove('hidden'); tabRes.classList.add('block');
+            tabAlu.classList.remove('block'); tabAlu.classList.add('hidden');
+            btnRes.className = "py-2.5 px-4 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition-all flex items-center gap-2 outline-none";
+            btnAlu.className = "py-2.5 px-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-2 outline-none";
+        } else {
+            tabAlu.classList.remove('hidden'); tabAlu.classList.add('block');
+            tabRes.classList.remove('block'); tabRes.classList.add('hidden');
+            btnAlu.className = "py-2.5 px-4 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition-all flex items-center gap-2 outline-none";
+            btnRes.className = "py-2.5 px-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-2 outline-none";
+        }
+    }
+
+    // 2. Control de selección masiva de checkboxes
+    function toggleTodos(source) {
+        const checkboxes = document.querySelectorAll('.check-alumno');
+        checkboxes.forEach(cb => cb.checked = source.checked);
+    }
+
+    // 3. Despacho dinámico para cambio inmediato de semestres individuales
+    function actualizarSemestreIndividual(id, valor) {
+        const form = document.getElementById('formIndividual');
+        form.action = "/maestro/cambiar_semestre/" + id;
+        document.getElementById('inputSemestreIndividual').value = valor;
+        form.submit();
+    }
+
+    // 4. Capturador de parámetros de URL para imprimir alertas flash asíncronas
+    window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const container = document.getElementById('alertContainer');
+        
+        let message = '';
+        let classes = '';
+        let icon = '';
+
+        if (params.has('success')) {
+            message = params.get('success');
+            classes = 'flex items-center justify-between p-4 mb-5 text-sm rounded-xl border bg-green-50 text-green-800 border-green-200';
+            icon = '<i class="bi bi-check-circle-fill"></i>';
+        } else if (params.has('error')) {
+            message = params.get('error');
+            classes = 'flex items-center justify-between p-4 mb-5 text-sm rounded-xl border bg-red-50 text-red-800 border-red-200';
+            icon = '<i class="bi bi-exclamation-triangle-fill"></i>';
+        }
+
+        if (message) {
+            container.className = classes;
+            container.innerHTML = `
+                <div class="flex items-center gap-2 font-medium">
+                    ${icon} <span>${message}</span>
+                </div>
+                <button type="button" class="font-bold hover:opacity-70 text-slate-900" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x-lg text-xs"></i>
+                </button>
+            `;
+            container.classList.remove('hidden');
+        }
+    });
+    </script>
+</body>
+</html>
